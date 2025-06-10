@@ -23,13 +23,16 @@ client = OpenAI(
 app = FastAPI()
 
 # Enable CORS for frontend
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://synthide.vercel.app"],
+    allow_origins=["*"],  # OR your frontend domain like "https://synthide.vercel.app"
     allow_credentials=True,
-    allow_methods=["POST", "OPTIONS", "GET"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # ====================
