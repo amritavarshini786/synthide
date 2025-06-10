@@ -1,0 +1,140 @@
+.App {
+  text-align: center;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: "Fira Code", monospace;
+}
+
+.App.light {
+  background-color: white;
+  color: black;
+}
+
+.App.light .output-box {
+  height: 25vh;           
+  overflow-y: auto;   
+  padding: 10px;
+  border: 1px solid #ccc; 
+  background-color: #f9f9f9;
+  white-space: pre-wrap; 
+  font-family: monospace;
+}
+
+.App.light .run-btn {
+  background-color: #007acc;
+  color: white;
+}
+
+.App.light .theme-toggle-btn {
+  background-color: #007acc;
+  color: white;
+}
+
+.App.dark {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.App.dark .output-box {
+  background-color: #252526;
+  border: 1px solid #333;
+  color: #d4d4d4;
+}
+
+.App.dark .run-btn {
+  background-color: #0a84ff;
+  color: white;
+}
+
+.App.dark .theme-toggle-btn {
+  background-color: #444;
+  color: white;
+}
+
+.run-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.run-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.theme-toggle-btn {
+  margin-bottom: 15px;
+  padding: 8px 15px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+}
+.monaco-editor,
+.monaco-editor-background {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+.editor-test-container {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+  flex: 1;
+  height: 60vh;
+}
+
+.code-editor {
+  flex: 2;
+  height: 100%;
+}
+
+.test-input {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.test-input textarea {
+  flex: 1;
+  resize: none;
+}
+
+html, body, #root{
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+#theme-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background: #ccc;
+  border-radius: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+#theme-toggle:checked {
+  background: #4caf50;
+}
+
+#theme-toggle::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+#theme-toggle:checked::before {
+  transform: translateX(20px);
+}

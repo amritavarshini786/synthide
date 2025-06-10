@@ -21,3 +21,15 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# === Backend (FastAPI) ===
+backend/.env
+backend/__pycache__/
+backend/.venv/
+
+# === Root level ===
+.env
+node_modules/
+frontend/node_modules/
+frontend/build/
+
