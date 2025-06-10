@@ -6,20 +6,23 @@ import tempfile
 import uuid
 import threading
 import os
-from openai import OpenAI
+import re
 from dotenv import load_dotenv
+from openai import OpenAI
+
+# Load environment variables
 load_dotenv()
 
+# Initialize OpenAI client
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1"
 )
-# if not api_key:
-#     raise RuntimeError("OPENAI_API_KEY environment variable not set")
 
-# client = OpenAI(api_key=api_key)
-
+# Initialize FastAPI app
 app = FastAPI()
+
+# Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -28,6 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ====================
+# CODE EXECUTION LOGIC
+# ====================
 class CodeRequest(BaseModel):
     code: str
     language: str
@@ -47,23 +53,22 @@ async def get_output(run_id: str):
     return {"output": code_outputs.get(run_id, "No such run ID.")}
 
 def execute_code(code: str, language: str, run_id: str, input_data: str = ""):
-    if language == "java":
-        temp_dir = tempfile.mkdtemp()
-        file_path = os.path.join(temp_dir, "Main.java")
-        with open(file_path, "w") as f:
-            f.write(code)
-        cmd = get_command(language, file_path, run_id)
-    else:
-        with tempfile.NamedTemporaryFile(mode="w+", suffix=get_file_extension(language), delete=False) as tmp_file:
-            tmp_file.write(code)
-            tmp_file.flush()
-            file_path = tmp_file.name
-            cmd = get_command(language, file_path, run_id)
-
-    if not cmd:
-        return
-
     try:
+        if language == "java":
+            temp_dir = tempfile.mkdtemp()
+            file_path = os.path.join(temp_dir, "Main.java")
+            with open(file_path, "w") as f:
+                f.write(code)
+        else:
+            with tempfile.NamedTemporaryFile(mode="w+", suffix=get_file_extension(language), delete=False) as tmp_file:
+                tmp_file.write(code)
+                tmp_file.flush()
+                file_path = tmp_file.name
+
+        cmd = get_command(language, file_path, run_id)
+        if not cmd:
+            return
+
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -73,22 +78,19 @@ def execute_code(code: str, language: str, run_id: str, input_data: str = ""):
         )
         stdout, _ = process.communicate(input=input_data)
         code_outputs[run_id] = stdout
+
     except Exception as e:
         code_outputs[run_id] = f"Error during execution: {str(e)}"
 
-def get_file_extension(language):
-    if language == "python":
-        return ".py"
-    elif language == "javascript":
-        return ".js"
-    elif language == "cpp":
-        return ".cpp"
-    elif language == "java":
-        return ".java"
-    else:
-        return ".txt"
+def get_file_extension(language: str) -> str:
+    return {
+        "python": ".py",
+        "javascript": ".js",
+        "cpp": ".cpp",
+        "java": ".java"
+    }.get(language, ".txt")
 
-def get_command(language, filename, run_id):
+def get_command(language: str, filename: str, run_id: str):
     if language == "python":
         return ["python", filename]
     elif language == "javascript":
@@ -113,6 +115,9 @@ def get_command(language, filename, run_id):
         code_outputs[run_id] = f"Unsupported language: {language}"
         return []
 
+# ====================
+# CODE EXPLANATION LOGIC
+# ====================
 class ExplainRequest(BaseModel):
     code: str
     language: str
@@ -131,30 +136,27 @@ def explain_code(req: ExplainRequest):
             max_tokens=150,
             temperature=0.5,
         )
-        print("OpenAI API call successful")
         explanation = response.choices[0].message.content.strip()
         return {"explanation": explanation}
     except Exception as e:
         print(f"Error calling OpenAI API: {e}")
         return {"explanation": f"Error: {str(e)}"}
 
-from pydantic import BaseModel
-import re
-
+# ====================
+# CODE GENERATION LOGIC
+# ====================
 class GenerateRequest(BaseModel):
     prompt: str
     language: str
 
 def wrap_in_main(code: str, language: str) -> str:
     code = code.strip()
-
     if language == "python":
         return f"""def main():
     {code.replace('\n', '\n    ')}
 
 if __name__ == "__main__":
     main()"""
-    
     elif language == "cpp":
         return f"""#include <iostream>
 using namespace std;
@@ -163,21 +165,18 @@ int main() {{
     {code.replace('\n', '\n    ')}
     return 0;
 }}"""
-    
     elif language == "java":
         return f"""public class Main {{
     public static void main(String[] args) {{
         {code.replace('\n', '\n        ')}
     }}
 }}"""
-    
     elif language == "javascript":
         return f"""function main() {{
     {code.replace('\n', '\n    ')}
 }}
 
 main();"""
-
     else:
         return f"Unsupported language: {language}"
 
@@ -202,7 +201,7 @@ def generate_code(req: GenerateRequest):
 
         raw_code = response.choices[0].message.content.strip()
 
-        # Clean markdown ``` wrappers if they sneak in
+        # Clean markdown `` wrappers if present
         cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
 
         # Wrap appropriately
@@ -212,5 +211,3 @@ def generate_code(req: GenerateRequest):
 
     except Exception as e:
         return {"code": f"Error: {str(e)}"}
-
-
