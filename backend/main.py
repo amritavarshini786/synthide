@@ -151,32 +151,41 @@ class GenerateRequest(BaseModel):
 
 def wrap_in_main(code: str, language: str) -> str:
     code = code.strip()
+
     if language == "python":
+        indented_code = code.replace('\n', '\n    ')
         return f"""def main():
-    {code.replace('\n', '\n    ')}
+    {indented_code}
 
 if __name__ == "__main__":
     main()"""
+
     elif language == "cpp":
+        indented_code = code.replace('\n', '\n    ')
         return f"""#include <iostream>
 using namespace std;
 
 int main() {{
-    {code.replace('\n', '\n    ')}
+    {indented_code}
     return 0;
 }}"""
+
     elif language == "java":
+        indented_code = code.replace('\n', '\n        ')
         return f"""public class Main {{
     public static void main(String[] args) {{
-        {code.replace('\n', '\n        ')}
+        {indented_code}
     }}
 }}"""
+
     elif language == "javascript":
+        indented_code = code.replace('\n', '\n    ')
         return f"""function main() {{
-    {code.replace('\n', '\n    ')}
+    {indented_code}
 }}
 
 main();"""
+
     else:
         return f"Unsupported language: {language}"
 
