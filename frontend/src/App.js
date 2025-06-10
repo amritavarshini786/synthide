@@ -16,7 +16,7 @@ function App() {
   const explainCode = async () => {
     try {
       setOutput("Explaining code...");
-      const res = await fetch("http://localhost:8000/explain-code", {
+      const res = await fetch("https://synthide.onrender.com/explain-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language }),
@@ -63,7 +63,7 @@ function App() {
     setOutput("");
     setRunId(null);
     try {
-      const res = await fetch("http://localhost:8000/run-code", {
+      const res = await fetch("https://synthide.onrender.com/run-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language, input: testInput }),
@@ -89,7 +89,7 @@ function App() {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:8000/get-output/${runId}`);
+        const res = await fetch(`https://synthide.onrender.com/get-output/${runId}`);
         if (!res.ok) throw new Error("Network response not ok");
 
         const data = await res.json();
@@ -338,7 +338,7 @@ function App() {
             onClick={async () => {
               try {
                 setOutput("Generating code...");
-                const res = await fetch("http://localhost:8000/generate-code", {
+                const res = await fetch("https://synthide.onrender.com/generate-code", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ prompt, language }),
