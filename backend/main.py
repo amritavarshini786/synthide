@@ -41,6 +41,19 @@ class CodeRequest(BaseModel):
     input: str = ""
 
 code_outputs = {}
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+
+@app.options("/run-code")
+async def preflight_run_code(request: Request):
+    return JSONResponse(content={"message": "Preflight OK"})
+@app.options("/explain-code")
+async def preflight_explain(request: Request):
+    return JSONResponse(content={"message": "Preflight OK"})
+
+@app.options("/generate-code")
+async def preflight_generate(request: Request):
+    return JSONResponse(content={"message": "Preflight OK"})
 
 @app.post("/run-code")
 async def run_code(request: CodeRequest):
