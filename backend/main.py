@@ -25,12 +25,12 @@ app = FastAPI()
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000",
-                   "https://synthide.vercel.app"],
+    allow_origins=["https://synthide.vercel.app"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["POST", "OPTIONS", "GET"],
     allow_headers=["*"],
 )
+
 
 # ====================
 # CODE EXECUTION LOGIC
@@ -41,35 +41,6 @@ class CodeRequest(BaseModel):
     input: str = ""
 
 code_outputs = {}
-from fastapi.responses import JSONResponse
-from fastapi.requests import Request
-
-from fastapi.responses import Response
-
-@app.options("/run-code")
-async def preflight_run_code():
-    return Response(status_code=200, headers={
-        "Access-Control-Allow-Origin": "https://synthide.vercel.app",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    })
-
-@app.options("/explain-code")
-async def preflight_explain():
-    return Response(status_code=200, headers={
-        "Access-Control-Allow-Origin": "https://synthide.vercel.app",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    })
-
-@app.options("/generate-code")
-async def preflight_generate():
-    return Response(status_code=200, headers={
-        "Access-Control-Allow-Origin": "https://synthide.vercel.app",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    })
-
 
 @app.post("/run-code")
 async def run_code(request: CodeRequest):
