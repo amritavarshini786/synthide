@@ -12,30 +12,23 @@ from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1"
 )
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["https://synthide.vercel.app"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ====================
-# DB INIT & LOGGING
-# ====================
 def init_db():
     conn = sqlite3.connect("usage.db")
     c = conn.cursor()
@@ -45,7 +38,9 @@ def init_db():
             event_type TEXT,
             language TEXT,
             timestamp TEXT,
-            ip TEXT
+            ip TEXT,
+            run_id TEXT,
+            output TEXT
         )
     ''')
     conn.commit()
@@ -53,52 +48,45 @@ def init_db():
 
 init_db()
 
-def log_event(event_type, language, ip):
+def log_event(event_type, language, ip, run_id=None, output=None):
     conn = sqlite3.connect("usage.db")
     c = conn.cursor()
     c.execute(
-        "INSERT INTO usage_stats (event_type, language, timestamp, ip) VALUES (?, ?, ?, ?)",
-        (event_type, language, datetime.utcnow().isoformat(), ip)
+        "INSERT INTO usage_stats (event_type, language, timestamp, ip, run_id, output) VALUES (?, ?, ?, ?, ?, ?)",
+        (event_type, language, datetime.utcnow().isoformat(), ip, run_id, output)
     )
     conn.commit()
     conn.close()
 
-# ====================
-# CODE EXECUTION
-# ====================
 class CodeRequest(BaseModel):
     code: str
     language: str
     input: str = ""
 
-code_outputs = {}
-
 @app.post("/run-code")
 async def run_code(request: CodeRequest, http_request: Request):
     run_id = str(uuid.uuid4())
-    code_outputs[run_id] = ""  # placeholder to track execution status
-
-    log_event("run_code", request.language, http_request.client.host)
-
     threading.Thread(
         target=execute_code,
-        args=(request.code, request.language, run_id, request.input)
+        args=(request.code, request.language, run_id, request.input, http_request.client.host)
     ).start()
-
     return {"run_id": run_id}
 
 @app.get("/get-output/{run_id}")
 async def get_output(run_id: str):
-    output = code_outputs.get(run_id)
-    if output is None:
-        return {"output": ""}
-    return {"output": output}
+    conn = sqlite3.connect("usage.db")
+    c = conn.cursor()
+    c.execute("SELECT output FROM usage_stats WHERE run_id = ?", (run_id,))
+    row = c.fetchone()
+    conn.close()
+    return {"output": row[0] if row else "⏳ Still running or output not found."}
 
-def execute_code(code: str, language: str, run_id: str, input_data: str = ""):
+def execute_code(code: str, language: str, run_id: str, input_data: str = "", ip: str = "unknown"):
     print(f"[EXECUTE] Running {language} code for run_id={run_id}")
     try:
         if language == "java":
-            code_outputs[run_id] = "Java is not supported currently."
+            output = "Java is not supported currently."
+            log_event("run_code", language, ip, run_id, output)
             return
 
         with tempfile.NamedTemporaryFile(mode="w+", suffix=get_file_extension(language), delete=False) as tmp_file:
@@ -108,7 +96,7 @@ def execute_code(code: str, language: str, run_id: str, input_data: str = ""):
 
         cmd = get_command(language, file_path, run_id)
         if not cmd:
-            print(f"[EXECUTE] Invalid command for language: {language}")
+            log_event("run_code", language, ip, run_id, "[Invalid command or compilation failed]")
             return
 
         process = subprocess.Popen(
@@ -118,14 +106,14 @@ def execute_code(code: str, language: str, run_id: str, input_data: str = ""):
             stdin=subprocess.PIPE,
             text=True,
         )
-
         stdout, _ = process.communicate(input=input_data)
-        print(f"[EXECUTE] Output for {run_id}:\n{stdout}")
-        code_outputs[run_id] = stdout or "[No output]"
+        output = stdout or "[No output]"
 
     except Exception as e:
-        print(f"[ERROR] Code execution failed for {run_id}: {str(e)}")
-        code_outputs[run_id] = f"Error during execution: {str(e)}"
+        output = f"Error during execution: {str(e)}"
+
+    log_event("run_code", language, ip, run_id, output)
+    print(f"[EXECUTE] Output for {run_id}:\n{output}")
 
 def get_file_extension(language: str) -> str:
     return {
@@ -145,16 +133,12 @@ def get_command(language: str, filename: str, run_id: str):
         compile_cmd = ["g++", filename, "-o", exe_file]
         compile_process = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         if compile_process.returncode != 0:
-            code_outputs[run_id] = compile_process.stdout
+            log_event("run_code", "cpp", "compile", run_id, compile_process.stdout)
             return []
         return [exe_file]
     else:
-        code_outputs[run_id] = f"Unsupported language: {language}"
         return []
 
-# ====================
-# CODE EXPLANATION
-# ====================
 class ExplainRequest(BaseModel):
     code: str
     language: str
@@ -162,7 +146,6 @@ class ExplainRequest(BaseModel):
 @app.post("/explain-code")
 def explain_code(req: ExplainRequest):
     prompt = f"Explain this {req.language} code:\n\n{req.code}\n\nExplanation:"
-    print("[EXPLAIN] Request received.")
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -176,12 +159,8 @@ def explain_code(req: ExplainRequest):
         explanation = response.choices[0].message.content.strip()
         return {"explanation": explanation}
     except Exception as e:
-        print(f"[ERROR] Explanation failed: {e}")
         return {"explanation": f"Error: {str(e)}"}
 
-# ====================
-# CODE GENERATION
-# ====================
 class GenerateRequest(BaseModel):
     prompt: str
     language: str
@@ -195,7 +174,6 @@ def generate_code(req: GenerateRequest):
         f"Task:\n{req.prompt}\n\n"
         "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
     )
-
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -206,39 +184,27 @@ def generate_code(req: GenerateRequest):
             max_tokens=300,
             temperature=0.3,
         )
-
         raw_code = response.choices[0].message.content.strip()
         cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
-
         log_event("generate_code", req.language, "unknown")
-        print("[GENERATE] Code generated successfully.")
         return {"code": cleaned_code or "// No code returned by AI."}
-
     except Exception as e:
-        print(f"[ERROR] Code generation failed: {e}")
         return {"code": f"Error: {str(e)}"}
 
-# ====================
-# STATS ENDPOINT
-# ====================
 @app.get("/stats")
 def get_stats():
     conn = sqlite3.connect("usage.db")
     c = conn.cursor()
-
     total_runs = c.execute("SELECT COUNT(*) FROM usage_stats WHERE event_type = 'run_code'").fetchone()[0]
     total_generations = c.execute("SELECT COUNT(*) FROM usage_stats WHERE event_type = 'generate_code'").fetchone()[0]
     unique_users = c.execute("SELECT COUNT(DISTINCT ip) FROM usage_stats").fetchone()[0]
-
     conn.close()
-
     return {
         "total_code_runs": total_runs,
         "total_code_generations": total_generations,
         "unique_users": unique_users
     }
 
-# Optional: root route to confirm server is up
 @app.get("/")
 def root():
     return {"message": "SynthIDE backend is running. Use /run-code, /generate-code, /stats, etc."}
