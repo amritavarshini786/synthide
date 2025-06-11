@@ -73,13 +73,23 @@ class CodeRequest(BaseModel):
 
 code_outputs = {}
 
+from fastapi import FastAPI, Request
+
 @app.post("/run-code")
-async def run_code(request: CodeRequest):
+async def run_code(request: CodeRequest, http_request: Request):
     run_id = str(uuid.uuid4())
     code_outputs[run_id] = ""
-    threading.Thread(target=execute_code, args=(request.code, request.language, run_id, request.input)).start()
-    log_event("run_code", request.language, request.client.host)
+    
+    # ✅ Corrected usage of client IP
+    log_event("run_code", request.language, http_request.client.host)
+    
+    threading.Thread(
+        target=execute_code,
+        args=(request.code, request.language, run_id, request.input)
+    ).start()
+    
     return {"run_id": run_id}
+
 
 @app.get("/get-output/{run_id}")
 async def get_output(run_id: str):
