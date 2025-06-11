@@ -152,6 +152,7 @@ def explain_code(req: ExplainRequest):
 class GenerateRequest(BaseModel):
     prompt: str
     language: str
+    template: str
 
 def wrap_in_main(code: str, language: str) -> str:
     code = code.strip()
@@ -196,10 +197,11 @@ main();"""
 @app.post("/generate-code")
 def generate_code(req: GenerateRequest):
     user_prompt = (
-        f"Write only the raw {req.language} code logic for the following task. "
-        "Do not add comments, explanation, or markdown. No formatting. Just clean code lines. "
-        f"Task: {req.prompt}"
-    )
+    f"You are to generate complete {req.language} code for the following task.\n\n"
+    f"Base Template:\n{req.template}\n\n"
+    f"Task:\n{req.prompt}\n\n"
+    "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
+)
 
     try:
         response = client.chat.completions.create(
@@ -218,9 +220,7 @@ def generate_code(req: GenerateRequest):
         cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
 
         # Wrap appropriately
-        final_code = wrap_in_main(cleaned_code, req.language.lower())
-
-        return {"code": final_code}
+        return {"code": cleaned_code}
 
     except Exception as e:
         return {"code": f"Error: {str(e)}"}

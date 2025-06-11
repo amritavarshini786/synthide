@@ -19,7 +19,12 @@ function App() {
       const res = await fetch("https://synthide.onrender.com/explain-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language }),
+        body: JSON.stringify({
+        prompt,
+        language,
+        template: code  // send current template shown in editor
+    }),
+
       });
       const data = await res.json();
       setOutput(data.explanation || "No explanation received.");

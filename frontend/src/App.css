@@ -138,3 +138,26 @@ html, body, #root{
 #theme-toggle:checked::before {
   transform: translateX(20px);
 }
+@media (max-width: 768px) {
+  .App {
+    padding: 10px;
+  }
+
+  .App .run-btn {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .App .output-box {
+    height: 20vh;
+  }
+
+  .App > div[style*="display: flex"] {
+    flex-direction: column !important;
+  }
+
+  .App textarea,
+  .App select {
+    width: 100% !important;
+  }
+}
