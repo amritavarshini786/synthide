@@ -57,7 +57,7 @@ function App() {
       python: `def main():\n    # Write your code here\n    \nif __name__ == "__main__":\n    main()`,
       javascript: `function main() {\n    // Write your code here\n}\n\nmain();`,
       cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
-      java: `public class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}`,
+      // java: `public class Main {\n    public static void main(String[] args) {\n        // Write your code here\n    }\n}`,
     };
     setCode(templates[language] || "// Start coding...");
   }, [language]);
@@ -190,7 +190,7 @@ function App() {
           <option value="python">Python</option>
           <option value="javascript">JavaScript</option>
           <option value="cpp">C++</option>
-          <option value="java">Java</option>
+          {/* <option value="java">Java</option> */}
         </select>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

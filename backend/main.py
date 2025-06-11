@@ -107,14 +107,14 @@ def get_command(language: str, filename: str, run_id: str):
             code_outputs[run_id] = compile_process.stdout
             return []
         return [exe_file]
-    elif language == "java":
-        class_name = os.path.basename(filename).replace(".java", "")
-        compile_cmd = ["javac", filename]
-        compile_process = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        if compile_process.returncode != 0:
-            code_outputs[run_id] = compile_process.stdout
-            return []
-        return ["java", "-cp", os.path.dirname(filename), class_name]
+    # elif language == "java":
+    #     class_name = os.path.basename(filename).replace(".java", "")
+    #     compile_cmd = ["javac", filename]
+    #     compile_process = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    #     if compile_process.returncode != 0:
+    #         code_outputs[run_id] = compile_process.stdout
+    #         return []
+    #     return ["java", "-cp", os.path.dirname(filename), class_name]
     else:
         code_outputs[run_id] = f"Unsupported language: {language}"
         return []
