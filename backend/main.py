@@ -7,20 +7,27 @@ import uuid
 import threading
 import os
 import re
-import sqlite3
 from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
+from supabase import create_client
 
+# Load environment variables
 load_dotenv()
 
+# OpenAI setup
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1"
 )
 
-app = FastAPI()
+# Supabase setup
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# FastAPI app initialization
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,40 +36,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def init_db():
-    conn = sqlite3.connect("usage.db")
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS usage_stats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            event_type TEXT,
-            language TEXT,
-            timestamp TEXT,
-            ip TEXT,
-            run_id TEXT,
-            output TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
+# Logging to Supabase
 def log_event(event_type, language, ip, run_id=None, output=None):
-    conn = sqlite3.connect("usage.db")
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO usage_stats (event_type, language, timestamp, ip, run_id, output) VALUES (?, ?, ?, ?, ?, ?)",
-        (event_type, language, datetime.utcnow().isoformat(), ip, run_id, output)
-    )
-    conn.commit()
-    conn.close()
+    supabase.table("usage_stats").insert({
+        "event_type": event_type,
+        "language": language,
+        "timestamp": datetime.utcnow().isoformat(),
+        "ip": ip,
+        "run_id": run_id,
+        "output": output
+    }).execute()
 
+# Request Models
 class CodeRequest(BaseModel):
     code: str
     language: str
     input: str = ""
 
+class ExplainRequest(BaseModel):
+    code: str
+    language: str
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    language: str
+    template: str
+
+# Endpoint: Run Code
 @app.post("/run-code")
 async def run_code(request: CodeRequest, http_request: Request):
     run_id = str(uuid.uuid4())
@@ -72,15 +72,15 @@ async def run_code(request: CodeRequest, http_request: Request):
     ).start()
     return {"run_id": run_id}
 
+# Endpoint: Get Output (from Supabase)
 @app.get("/get-output/{run_id}")
 async def get_output(run_id: str):
-    conn = sqlite3.connect("usage.db")
-    c = conn.cursor()
-    c.execute("SELECT output FROM usage_stats WHERE run_id = ?", (run_id,))
-    row = c.fetchone()
-    conn.close()
-    return {"output": row[0] if row else "⏳ Still running or output not found."}
+    result = supabase.table("usage_stats").select("output").eq("run_id", run_id).execute()
+    if result.data:
+        return {"output": result.data[0]["output"]}
+    return {"output": "⏳ Still running or output not found."}
 
+# Execute code in subprocess
 def execute_code(code: str, language: str, run_id: str, input_data: str = "", ip: str = "unknown"):
     print(f"[EXECUTE] Running {language} code for run_id={run_id}")
     try:
@@ -115,6 +115,8 @@ def execute_code(code: str, language: str, run_id: str, input_data: str = "", ip
     log_event("run_code", language, ip, run_id, output)
     print(f"[EXECUTE] Output for {run_id}:\n{output}")
 
+# Helpers
+
 def get_file_extension(language: str) -> str:
     return {
         "python": ".py",
@@ -139,10 +141,7 @@ def get_command(language: str, filename: str, run_id: str):
     else:
         return []
 
-class ExplainRequest(BaseModel):
-    code: str
-    language: str
-
+# Endpoint: Explain Code
 @app.post("/explain-code")
 def explain_code(req: ExplainRequest):
     prompt = f"Explain this {req.language} code:\n\n{req.code}\n\nExplanation:"
@@ -161,11 +160,7 @@ def explain_code(req: ExplainRequest):
     except Exception as e:
         return {"explanation": f"Error: {str(e)}"}
 
-class GenerateRequest(BaseModel):
-    prompt: str
-    language: str
-    template: str
-
+# Endpoint: Generate Code
 @app.post("/generate-code")
 def generate_code(req: GenerateRequest):
     user_prompt = (
@@ -191,20 +186,20 @@ def generate_code(req: GenerateRequest):
     except Exception as e:
         return {"code": f"Error: {str(e)}"}
 
+# Endpoint: Stats
 @app.get("/stats")
 def get_stats():
-    conn = sqlite3.connect("usage.db")
-    c = conn.cursor()
-    total_runs = c.execute("SELECT COUNT(*) FROM usage_stats WHERE event_type = 'run_code'").fetchone()[0]
-    total_generations = c.execute("SELECT COUNT(*) FROM usage_stats WHERE event_type = 'generate_code'").fetchone()[0]
-    unique_users = c.execute("SELECT COUNT(DISTINCT ip) FROM usage_stats").fetchone()[0]
-    conn.close()
+    all_data = supabase.table("usage_stats").select("*").execute().data
+    total_runs = sum(1 for d in all_data if d["event_type"] == "run_code")
+    total_generations = sum(1 for d in all_data if d["event_type"] == "generate_code")
+    unique_users = len(set(d["ip"] for d in all_data if d["ip"]))
     return {
         "total_code_runs": total_runs,
         "total_code_generations": total_generations,
         "unique_users": unique_users
     }
 
+# Root endpoint
 @app.get("/")
 def root():
     return {"message": "SynthIDE backend is running. Use /run-code, /generate-code, /stats, etc."}
