@@ -21,8 +21,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
         prompt,
-        language,
-        template: code  // send current template shown in editor
+        language, // send current template shown in editor
     }),
 
       });
@@ -346,7 +345,7 @@ function App() {
                 const res = await fetch("https://synthide.onrender.com/generate-code", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ prompt, language }),
+                  body: JSON.stringify({ prompt, language, template: code, }),
                 });
                 const data = await res.json();
                 setCode(data.code || "// No code generated.");

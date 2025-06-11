@@ -197,11 +197,11 @@ main();"""
 @app.post("/generate-code")
 def generate_code(req: GenerateRequest):
     user_prompt = (
-    f"You are to generate complete {req.language} code for the following task.\n\n"
-    f"Base Template:\n{req.template}\n\n"
-    f"Task:\n{req.prompt}\n\n"
-    "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
-)
+        f"You are to generate complete {req.language} code for the following task.\n\n"
+        f"Base Template:\n{req.template}\n\n"
+        f"Task:\n{req.prompt}\n\n"
+        "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
+    )
 
     try:
         response = client.chat.completions.create(
@@ -216,11 +216,17 @@ def generate_code(req: GenerateRequest):
 
         raw_code = response.choices[0].message.content.strip()
 
-        # Clean markdown `` wrappers if present
+        # Debug log (optional but helpful)
+        print("=== Raw Code from AI ===")
+        print(raw_code)
+        print("========================")
+
+        # Remove markdown `` wrappers if present
         cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
 
-        # Wrap appropriately
-        return {"code": cleaned_code}
+        return {"code": cleaned_code or "// No code returned by AI."}
 
     except Exception as e:
+        print(f"Error generating code: {e}")
         return {"code": f"Error: {str(e)}"}
+
