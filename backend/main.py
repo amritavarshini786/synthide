@@ -23,7 +23,10 @@ client = OpenAI(
 
 # Initialize FastAPI app
 app = FastAPI()
-
+subprocess.run(
+    ["python3", "main.py"],
+    timeout=3,  # Automatically kill it after 3 seconds
+)
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
