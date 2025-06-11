@@ -9,6 +9,7 @@ import os
 import re
 from dotenv import load_dotenv
 from openai import OpenAI
+import sqlite3
 
 # Load environment variables
 load_dotenv()
@@ -21,6 +22,22 @@ client = OpenAI(
 
 # Initialize FastAPI app
 app = FastAPI()
+def init_db():
+    conn = sqlite3.connect("usage.db")
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS usage_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT,
+            language TEXT,
+            timestamp TEXT,
+            ip TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # Enable CORS for frontend
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +51,17 @@ app.add_middleware(
 )
 
 
+from datetime import datetime
+
+def log_event(event_type, language, ip):
+    conn = sqlite3.connect("usage.db")
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO usage_stats (event_type, language, timestamp, ip) VALUES (?, ?, ?, ?)",
+        (event_type, language, datetime.utcnow().isoformat(), ip)
+    )
+    conn.commit()
+    conn.close()
 
 # ====================
 # CODE EXECUTION LOGIC
@@ -50,6 +78,7 @@ async def run_code(request: CodeRequest):
     run_id = str(uuid.uuid4())
     code_outputs[run_id] = ""
     threading.Thread(target=execute_code, args=(request.code, request.language, run_id, request.input)).start()
+    log_event("run_code", request.language, request.client.host)
     return {"run_id": run_id}
 
 @app.get("/get-output/{run_id}")
@@ -223,10 +252,25 @@ def generate_code(req: GenerateRequest):
 
         # Remove markdown `` wrappers if present
         cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
-
+        log_event("generate_code", req.language, "unknown")  # or get from headers if you want IP
         return {"code": cleaned_code or "// No code returned by AI."}
 
     except Exception as e:
         print(f"Error generating code: {e}")
         return {"code": f"Error: {str(e)}"}
+@app.get("/stats")
+def get_stats():
+    conn = sqlite3.connect("usage.db")
+    c = conn.cursor()
+
+    total_runs = c.execute("SELECT COUNT(*) FROM usage_stats WHERE event_type = 'run_code'").fetchone()[0]
+    total_generations = c.execute("SELECT COUNT(*) FROM usage_stats WHERE event_type = 'generate_code'").fetchone()[0]
+    unique_users = c.execute("SELECT COUNT(DISTINCT ip) FROM usage_stats").fetchone()[0]
+
+    conn.close()
+    return {
+        "total_code_runs": total_runs,
+        "total_code_generations": total_generations,
+        "unique_users": unique_users
+    }
 
