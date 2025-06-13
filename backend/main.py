@@ -125,19 +125,47 @@ def get_file_extension(language: str) -> str:
         "java": ".java"
     }.get(language, ".txt")
 
+import platform
+
 def get_command(language: str, filename: str, run_id: str):
     if language == "python":
         return ["python", filename]
+    
     elif language == "javascript":
         return ["node", filename]
+    
     elif language == "cpp":
-        exe_file = filename + ".exe"
+        # Determine the output binary name based on OS
+        if platform.system() == "Windows":
+            exe_file = filename.replace(".cpp", "") + ".exe"
+        else:
+            exe_file = filename.replace(".cpp", "")
+
+        # Compile the C++ code
         compile_cmd = ["g++", filename, "-o", exe_file]
-        compile_process = subprocess.run(compile_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        compile_process = subprocess.run(
+            compile_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        # If compilation fails
         if compile_process.returncode != 0:
-            log_event("run_code", "cpp", "compile", run_id, compile_process.stdout)
+            error_output = compile_process.stdout.strip()
+            print(f"[COMPILE ERROR] {error_output}")
+            log_event("run_code", "cpp", "compile", run_id, error_output)
             return []
+
+        # Make the binary executable on Linux/macOS
+        if platform.system() != "Windows":
+            try:
+                os.chmod(exe_file, 0o755)
+            except Exception as chmod_error:
+                print(f"[CHMOD ERROR] Failed to chmod {exe_file}: {chmod_error}")
+
         return [exe_file]
+    
     else:
         return []
 
