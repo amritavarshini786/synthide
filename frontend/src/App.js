@@ -85,10 +85,11 @@ function App() {
 
   let retryCount = 0;
   const maxRetries = 15;
+
   const interval = setInterval(async () => {
     retryCount++;
     if (retryCount > maxRetries) {
-      setOutput("Execution timed out or error occurred.");
+      setOutput("Execution timed out or output not found.");
       setLoading(false);
       clearInterval(interval);
       return;
@@ -96,28 +97,24 @@ function App() {
 
     try {
       const res = await fetch(`https://synthide.onrender.com/get-output/${runId}`);
-      if (!res.ok) throw new Error("Network response not ok");
+      if (!res.ok) throw new Error("Network error");
 
       const data = await res.json();
 
-      // Update output even if it's an empty string
-      if (data.output !== undefined) {
+      if (data.output !== undefined && data.output !== "⏳ Still running or output not found.") {
         setOutput(data.output);
         setLoading(false);
         clearInterval(interval);
       }
     } catch (err) {
-      // Do NOT overwrite good output if error occurs later
-      if (!output) {
-        setOutput("Error fetching output");
-      }
-      setLoading(false);
-      clearInterval(interval);
+      console.error("Polling error:", err.message);
+      // ⚠️ Do NOT clear interval here — allow retries to continue
     }
   }, 1000);
 
   return () => clearInterval(interval);
 }, [runId]);
+
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
