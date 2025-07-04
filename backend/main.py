@@ -187,7 +187,7 @@ def explain_code(req: ExplainRequest):
                     {"role": "system", "content": "You are a helpful assistant that explains code."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=150,
+                max_tokens=2000,
                 temperature=0.5,
             )
             explanation = response.choices[0].message.content.strip()
@@ -219,7 +219,7 @@ def generate_code(req: GenerateRequest):
                     {"role": "system", "content": "You are a code-only generator assistant. Never return explanations or markdown."},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_tokens=300,
+                max_tokens=4000,
                 temperature=0.3,
             )
             raw_code = response.choices[0].message.content.strip()
