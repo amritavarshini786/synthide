@@ -175,6 +175,8 @@ def explain_code(req: ExplainRequest):
     prompt = f"Explain this {req.language} code in simple language, briefly, only give explanation, no other lines:\n\n{req.code}\n\nExplanation:"
     models = [
         "deepseek-ai/deepseek-coder:33b-instruct",
+        "google/codegemma-7b-it",
+        "mistralai/mixtral-8x7b-instruct"
     ]
     for model in models:
         try:
@@ -204,6 +206,8 @@ def generate_code(req: GenerateRequest):
     )
     models = [
         "deepseek-ai/deepseek-coder:33b-instruct",
+        "google/codegemma-7b-it",
+        "mistralai/mixtral-8x7b-instruct"
     ]
     for model in models:
         try:
