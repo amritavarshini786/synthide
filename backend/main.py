@@ -173,20 +173,28 @@ def get_command(language: str, filename: str, run_id: str):
 @app.post("/explain-code")
 def explain_code(req: ExplainRequest):
     prompt = f"Explain this {req.language} code:\n\n{req.code}\n\nExplanation:"
-    try:
-        response = client.chat.completions.create(
-            model="openai/gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that explains code."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,
-            temperature=0.5,
-        )
-        explanation = response.choices[0].message.content.strip()
-        return {"explanation": explanation}
-    except Exception as e:
-        return {"explanation": f"Error: {str(e)}"}
+    models = [
+        "openchat/openchat-3.5-1210",
+        "openrouter/cypher-alpha",
+        "mistralai/mistral-7b-instruct"
+    ]
+    for model in models:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that explains code."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.5,
+            )
+            explanation = response.choices[0].message.content.strip()
+            return {"explanation": explanation}
+        except Exception as e:
+            print(f"[ERROR] {model} failed in explain-code: {e}")
+            continue
+    return {"explanation": "All models failed to generate an explanation."}
 
 # Endpoint: Generate Code
 @app.post("/generate-code")
@@ -197,22 +205,30 @@ def generate_code(req: GenerateRequest):
         f"Task:\n{req.prompt}\n\n"
         "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
     )
-    try:
-        response = client.chat.completions.create(
-            model="openai/gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a code-only generator assistant. Never return explanations or markdown."},
-                {"role": "user", "content": user_prompt}
-            ],
-            max_tokens=300,
-            temperature=0.3,
-        )
-        raw_code = response.choices[0].message.content.strip()
-        cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
-        log_event("generate_code", req.language, "unknown")
-        return {"code": cleaned_code or "// No code returned by AI."}
-    except Exception as e:
-        return {"code": f"Error: {str(e)}"}
+    models = [
+        "openchat/openchat-3.5-1210",
+        "openrouter/cypher-alpha",
+        "mistralai/mistral-7b-instruct"
+    ]
+    for model in models:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are a code-only generator assistant. Never return explanations or markdown."},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=300,
+                temperature=0.3,
+            )
+            raw_code = response.choices[0].message.content.strip()
+            cleaned_code = re.sub(r"^```[a-z]*\n?|```$", "", raw_code, flags=re.IGNORECASE).strip()
+            log_event("generate_code", req.language, "unknown")
+            return {"code": cleaned_code or "// No code returned by AI."}
+        except Exception as e:
+            print(f"[ERROR] {model} failed in generate-code: {e}")
+            continue
+    return {"code": "// All models failed to generate code."}
 
 # Endpoint: Stats
 @app.get("/stats")
