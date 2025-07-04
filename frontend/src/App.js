@@ -81,37 +81,43 @@ function App() {
   };
 
   useEffect(() => {
-    if (!runId) return;
-    let retryCount = 0;
-    const maxRetries = 15;
-    const interval = setInterval(async () => {
-      retryCount++;
-      if (retryCount > maxRetries) {
-        setOutput("Execution timed out or error occurred.");
+  if (!runId) return;
+
+  let retryCount = 0;
+  const maxRetries = 15;
+  const interval = setInterval(async () => {
+    retryCount++;
+    if (retryCount > maxRetries) {
+      setOutput("Execution timed out or error occurred.");
+      setLoading(false);
+      clearInterval(interval);
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://synthide.onrender.com/get-output/${runId}`);
+      if (!res.ok) throw new Error("Network response not ok");
+
+      const data = await res.json();
+
+      // Update output even if it's an empty string
+      if (data.output !== undefined) {
+        setOutput(data.output);
         setLoading(false);
         clearInterval(interval);
-        return;
       }
-      try {
-        const res = await fetch(`https://synthide.onrender.com/get-output/${runId}`);
-        if (!res.ok) throw new Error("Network response not ok");
-
-        const data = await res.json();
-        setOutput(data.output || "");
-
-        if (data.output) {
-          clearInterval(interval);
-          setLoading(false);
-        }
-      } catch (err) {
+    } catch (err) {
+      // Do NOT overwrite good output if error occurs later
+      if (!output) {
         setOutput("Error fetching output");
-        setLoading(false);
-        clearInterval(interval);
       }
-    }, 1000);
+      setLoading(false);
+      clearInterval(interval);
+    }
+  }, 1000);
 
-    return () => clearInterval(interval);
-  }, [runId]);
+  return () => clearInterval(interval);
+}, [runId]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
