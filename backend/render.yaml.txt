@@ -2,7 +2,9 @@ services:
   - type: web
     name: synthide-backend
     env: python
-    buildCommand: ""
+    buildCommand: |
+      apt-get update && apt-get install -y g++ 
+      pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port 8000
     envVars:
       - key: OPENROUTER_API_KEY
