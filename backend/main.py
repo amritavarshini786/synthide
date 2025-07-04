@@ -175,7 +175,7 @@ def explain_code(req: ExplainRequest):
     prompt = f"Explain this {req.language} code:\n\n{req.code}\n\nExplanation:"
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="openai/gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that explains code."},
                 {"role": "user", "content": prompt}
@@ -199,7 +199,7 @@ def generate_code(req: GenerateRequest):
     )
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="openai/gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a code-only generator assistant. Never return explanations or markdown."},
                 {"role": "user", "content": user_prompt}
