@@ -172,7 +172,7 @@ def get_command(language: str, filename: str, run_id: str):
 # Endpoint: Explain Code
 @app.post("/explain-code")
 def explain_code(req: ExplainRequest):
-    prompt = f"Explain this {req.language} code:\n\n{req.code}\n\nExplanation:"
+    prompt = f"Explain this {req.language} code in simple language, briefly, only give explanation, no other lines:\n\n{req.code}\n\nExplanation:"
     models = [
         "deepseek-ai/deepseek-coder:33b-instruct",
         "perplexity/mistral-7b-instruct",
