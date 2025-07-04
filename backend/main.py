@@ -176,7 +176,9 @@ def explain_code(req: ExplainRequest):
     models = [
         "deepseek-ai/deepseek-coder:33b-instruct",
         "google/codegemma-7b-it",
-        "mistralai/mixtral-8x7b-instruct"
+        "meta-llama/codellama-70b-instruct",
+        "phind/phind-codellama-34b",
+        "mistralai/mixtral-8x7b-instruct",
     ]
     for model in models:
         try:
@@ -207,7 +209,9 @@ def generate_code(req: GenerateRequest):
     models = [
         "deepseek-ai/deepseek-coder:33b-instruct",
         "google/codegemma-7b-it",
-        "mistralai/mixtral-8x7b-instruct"
+        "meta-llama/codellama-70b-instruct",
+        "phind/phind-codellama-34b",
+        "mistralai/mixtral-8x7b-instruct",
     ]
     for model in models:
         try:
