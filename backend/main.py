@@ -201,10 +201,11 @@ def explain_code(req: ExplainRequest):
 @app.post("/generate-code")
 def generate_code(req: GenerateRequest):
     user_prompt = (
-        f"You are to generate complete {req.language} code for the following task.\n\n"
-        f"Base Template:\n{req.template}\n\n"
+        f"You are a professional {req.language} developer. "
+        f"Generate only valid, clean, runnable code in this language.\n\n"
+        f"Use this base template:\n{req.template}\n\n"
         f"Task:\n{req.prompt}\n\n"
-        "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
+        "⚠️ Do NOT include explanations, markdown, or comments unless asked. Just output the code file content."
     )
     models = [
         "deepseek-ai/deepseek-coder:33b-instruct",
