@@ -192,9 +192,8 @@ def explain_code(req: ExplainRequest):
             explanation = response.choices[0].message.content.strip()
             return {"explanation": explanation}
         except Exception as e:
-            print(f"[ERROR] {model} failed in explain-code: {e}")
             continue
-    return {"explanation": "All models failed to generate an explanation."}
+    return {"explanation": "not currently available"}
 
 # Endpoint: Generate Code
 @app.post("/generate-code")
@@ -226,9 +225,8 @@ def generate_code(req: GenerateRequest):
             log_event("generate_code", req.language, "unknown")
             return {"code": cleaned_code or "// No code returned by AI."}
         except Exception as e:
-            print(f"[ERROR] {model} failed in generate-code: {e}")
             continue
-    return {"code": "// All models failed to generate code."}
+    return {"code": "not currently available"}
 
 # Endpoint: Stats
 @app.get("/stats")
