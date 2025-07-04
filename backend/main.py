@@ -174,6 +174,7 @@ def get_command(language: str, filename: str, run_id: str):
 def explain_code(req: ExplainRequest):
     prompt = f"Explain this {req.language} code:\n\n{req.code}\n\nExplanation:"
     models = [
+        "deepseek-ai/deepseek-coder:33b-instruct",
         "perplexity/mistral-7b-instruct",
         "openchat/openchat-3.5-1210",
         "mistralai/mixtral-8x7b-instruct",
@@ -205,6 +206,7 @@ def generate_code(req: GenerateRequest):
         "Generate code in the same format as the template. Do not add explanations or markdown. Only output valid code."
     )
     models = [
+        "deepseek-ai/deepseek-coder:33b-instruct",
         "perplexity/mistral-7b-instruct",
         "openchat/openchat-3.5-1210",
         "mistralai/mixtral-8x7b-instruct",
